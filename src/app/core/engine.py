@@ -12,6 +12,7 @@ from typing_extensions import TypedDict
 
 from .models import Agent
 from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
 
 # Define State
 class AgentState(TypedDict):
@@ -21,18 +22,27 @@ class AgentEngine:
     def __init__(self, agent: Agent):
         self.agent = agent
         
-        provider = os.getenv("AI_PROVIDER", "gemini").lower()
+        provider = os.getenv("AI_PROVIDER", "ollama").lower()
         
         if provider == "ollama":
             self.llm = ChatOllama(
                 model=os.getenv("OLLAMA_MODEL", "llama3"),
                 temperature=0.7
             )
+        elif provider == "openai":
+            api_key = os.getenv("OPENAI_API_KEY")
+            if not api_key:
+                raise ValueError("OPENAI_API_KEY not found and provider is 'openai'")
+            
+            self.llm = ChatOpenAI(
+                model=os.getenv("OPENAI_MODEL", "gpt-4"),
+                openai_api_key=api_key,
+                temperature=0.7
+            )
         else:
             # Fallback to Gemini
             api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
-                # If no key, default to ollama to be safe? No, raise error if gemini requested.
                 raise ValueError("GEMINI_API_KEY not found and provider is 'gemini'")
                 
             self.llm = ChatGoogleGenerativeAI(
