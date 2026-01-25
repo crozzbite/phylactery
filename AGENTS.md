@@ -33,6 +33,6 @@
 > [!TIP]
 > **"Don't Reinvent the Wheel"**
 > When a new tool is introduced to the project:
-> 1.  **Check Repository**: Look into `Gentleman-Skills/curated` first.
+> 1.  **Check Repository**: Look into [`Gentleman-Skills/curated`](https://github.com/Gentleman-Programming/Gentleman-Skills/tree/main/curated) first.
 > 2.  **Import**: If it exists, copy the `SKILL.md` to `.agent/skills/<tool>/`.
 > 3.  **Create**: Only creation from scratch if it's not in the official repo.
