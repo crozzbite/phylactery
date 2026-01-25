@@ -1,11 +1,12 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional, Dict, Any
+
+from pydantic import BaseModel
+
 
 class Skill(BaseModel):
     name: str
     description: str
     version: str = "1.0.0"
-    tags: List[str] = []
+    tags: list[str] = []
     content: str  # The full markdown content (Critical Patterns, etc.)
     path: str
 
@@ -13,6 +14,6 @@ class Agent(BaseModel):
     name: str
     role: str
     description: str
-    skills: List[str] = []  # List of skill names referenced
+    skills: list[str] = []  # List of skill names referenced
     instructions: str  # The system prompt body
     path: str

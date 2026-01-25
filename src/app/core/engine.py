@@ -1,29 +1,28 @@
 import os
+
 from dotenv import load_dotenv
-from typing import Dict, Any, List
+from langchain_core.messages import BaseMessage, HumanMessage, SystemMessage
 from langchain_google_genai import ChatGoogleGenerativeAI
-
-load_dotenv()
-
-from langchain_core.messages import HumanMessage, SystemMessage, BaseMessage
-from langgraph.graph import StateGraph, END
-from langgraph.graph.message import add_messages
+from langchain_ollama import ChatOllama
+from langchain_openai import ChatOpenAI
+from langgraph.graph import END, StateGraph
 from typing_extensions import TypedDict
 
 from .models import Agent
-from langchain_ollama import ChatOllama
-from langchain_openai import ChatOpenAI
+
+load_dotenv()
+
 
 # Define State
 class AgentState(TypedDict):
-    messages: List[BaseMessage]
+    messages: list[BaseMessage]
 
 class AgentEngine:
     def __init__(self, agent: Agent):
         self.agent = agent
-        
+
         provider = os.getenv("AI_PROVIDER", "ollama").lower()
-        
+
         if provider == "ollama":
             self.llm = ChatOllama(
                 model=os.getenv("OLLAMA_MODEL", "llama3"),
@@ -33,7 +32,7 @@ class AgentEngine:
             api_key = os.getenv("OPENAI_API_KEY")
             if not api_key:
                 raise ValueError("OPENAI_API_KEY not found and provider is 'openai'")
-            
+
             self.llm = ChatOpenAI(
                 model=os.getenv("OPENAI_MODEL", "gpt-4"),
                 openai_api_key=api_key,
@@ -44,7 +43,7 @@ class AgentEngine:
             api_key = os.getenv("GEMINI_API_KEY")
             if not api_key:
                 raise ValueError("GEMINI_API_KEY not found and provider is 'gemini'")
-                
+
             self.llm = ChatGoogleGenerativeAI(
                 model="gemini-1.5-flash",
                 google_api_key=api_key,
@@ -62,7 +61,7 @@ class AgentEngine:
             # Prepend System Prompt if not present (simple check)
             # ideally we manage history better, but for MVP:
             system_prompt = SystemMessage(content=f"Role: {self.agent.role}\nInstructions: {self.agent.instructions}")
-            
+
             # If the first message isn't system, add it contextually (or just pass it to Invoke)
             # LangChain models take a list. We'll merge system + history.
             response = self.llm.invoke([system_prompt] + messages)
