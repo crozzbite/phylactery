@@ -1,4 +1,6 @@
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from typing import Any
 
 from fastapi import FastAPI
 from pydantic import BaseModel
@@ -8,7 +10,7 @@ from .core.loader import brain
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
+async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Load Brain on Startup."""
     brain.load_brain()
     yield
@@ -19,7 +21,7 @@ app = FastAPI(title="Phylactery API", version="0.1.0", lifespan=lifespan)
 
 
 @app.get("/")
-def read_root():
+def read_root() -> dict[str, Any]:
     """Root endpoint showing loaded agents and skills."""
     return {
         "status": "Phylactery is breathing. 💀",
@@ -35,7 +37,7 @@ class ChatRequest(BaseModel):
 
 
 @app.post("/chat/{agent_name}")
-async def chat_with_agent(agent_name: str, request: ChatRequest):
+async def chat_with_agent(agent_name: str, request: ChatRequest) -> dict[str, Any]:
     """Chat with a specific agent."""
     # 1. Load Agent Definition
     agent_def = brain.get_agent(agent_name)

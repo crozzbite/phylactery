@@ -62,7 +62,8 @@ class BrainLoader:
                     role=meta.get("role", "Assistant"),
                     description=meta.get("description", "No description"),
                     instructions=post.content,
-                    path=str(agent_file)
+                    path=str(agent_file),
+                    ai_provider=meta.get("ai_provider"),  # Read from frontmatter
                 )
                 self.agents[agent.name] = agent
             except Exception as e:

@@ -5,10 +5,11 @@ from pydantic import BaseModel
 class Skill(BaseModel):
     name: str
     description: str
-    version: str = "1.0.0"
-    tags: list[str] = []
-    content: str  # The full markdown content (Critical Patterns, etc.)
+    version: str
+    tags: list[str]
+    content: str
     path: str
+
 
 class Agent(BaseModel):
     name: str
@@ -17,3 +18,4 @@ class Agent(BaseModel):
     skills: list[str] = []  # List of skill names referenced
     instructions: str  # The system prompt body
     path: str
+    ai_provider: str | None = None  # Optional: override global provider
