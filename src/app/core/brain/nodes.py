@@ -10,13 +10,13 @@ from langchain_core.messages import HumanMessage, AIMessage
 
 # Phylactery Core
 from .schemas import AgentState, ProposedTool, ToolResult
-from ..security.risk_policy import RiskEngine
+from ..security.engine import RiskEngine
 from ..security.auth import TokenManager
 from ..backends.state import StateBackend
 
 # --- SINGLETONS ---
 # In a real app, inject these via dependency injection configuration
-risk_engine = RiskEngine()
+engine = RiskEngine()
 auth_manager = TokenManager(secret_key=os.environ.get("PHYLACTERY_SECRET", "dev-secret-key"))
 # Note: StateBackend usually needs a runtime, mocking saving to disk for now via helper
 
@@ -132,15 +132,16 @@ def risk_gate_node(state: AgentState) -> Command[Literal["Tools", "AwaitApproval
     # FIX: Pass canonical to engine (simulated support in MVP)
     # In strict implementation, engine should parse canonical.
     # For now ensuring we pass exact args that generated the canonical.
-    risk_eval = risk_engine.evaluate_risk(tool["name"], tool["args"]) 
+    # Passing current authentication state (defaulting to False for now in RiskGate phase)
+    risk_eval = engine.evaluate_risk(tool["name"], tool["args"], is_authenticated=False) 
 
-    if risk_eval.decision == "BLOCKED":
+    if risk_eval.requires_auth == "blocked":
         return Command(
              update={"last_tool_result": make_tool_result_failed(f"Security Blocked: {risk_eval.reason}")},
              goto="Interpreter"
         )
         
-    if risk_eval.decision == "AUTH_REQUIRED":
+    if risk_eval.requires_auth in {"simple", "strong", "biometric"}:
         approval_id = f"auth_{os.urandom(4).hex()}"
         # FIX: Real Expiry
         import time
@@ -233,43 +234,49 @@ def approval_handler_node(state: AgentState) -> Command[Literal["Tools", "Superv
 
 def interpreter_node(state: AgentState) -> Command[Literal["Supervisor"]]:
     """
-    Analyzes Tool Result.
+    Analyzes Tool Result and updates Phase 4 step status.
     Handles Eviction (Size > 10k).
     Cleans up execution context.
     """
     result = state.get("last_tool_result") or {"status": "failed", "output": "No result found"}
+    step_idx = state.get("current_step", 0)
+    step_status = state.get("step_status", {}).copy()
     
     # --- EVICTION LOGIC ---
-    # Calc strict RAW size
     raw_output = result["output"]
-    if isinstance(raw_output, (dict, list)):
-        raw_str = json.dumps(raw_output)
-    else:
-        raw_str = str(raw_output)
-        
+    raw_str = json.dumps(raw_output) if isinstance(raw_output, (dict, list)) else str(raw_output)
     original_size = len(raw_str)
     
     if original_size > 10_000:
         pointer = save_eviction(raw_str, state.get("thread_id", "unknown"))
-        
-        # Mutate result to be lightweight
-        result["evicted"] = True
-        result["pointer"] = pointer
-        result["size_chars"] = original_size
-        result["output"] = f"[EVICTED size={original_size} chars] Content at {pointer}"
-        result["summary"] = raw_str[:500] + "...(truncated)"
-        
-        # Strict Rehydration Policy
-        result["rehydration_allowed"] = original_size <= 50_000
+        result.update({
+            "evicted": True,
+            "pointer": pointer,
+            "size_chars": original_size,
+            "output": f"[EVICTED size={original_size} chars] Content at {pointer}",
+            "summary": raw_str[:500] + "...(truncated)",
+            "rehydration_allowed": original_size <= 50_000
+        })
     else:
-        result["evicted"] = False
-        result["rehydration_allowed"] = True
-        result["size_chars"] = original_size
+        result.update({
+            "evicted": False,
+            "rehydration_allowed": True,
+            "size_chars": original_size
+        })
+
+    # --- PHASE 4 STATUS UPDATE ---
+    # Update step status based on current tool result
+    if result["status"] == "success":
+        step_status[step_idx] = "done"
+    elif result["status"] == "failed":
+        # Note: Supervisor handles retry logic if status is 'failed'
+        step_status[step_idx] = "failed"
 
     # Update State
     return Command(
         update={
             "last_tool_result": result,
+            "step_status": step_status,
             "proposed_tool": None, # CRITICAL: Prevent Double-Exec
         },
         goto="Supervisor"

@@ -1,53 +1,32 @@
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
-from typing import Any
 
 from fastapi import FastAPI
-from pydantic import BaseModel
 
-from .core.engine import AgentEngine
 from .core.loader import brain
+from .api.routes import auth, chat
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None]:
     """Load Brain on Startup."""
-    brain.load_brain()
+    await brain.load_brain()
     yield
     # Clean up (if needed)
 
 
 app = FastAPI(title="Phylactery API", version="0.1.0", lifespan=lifespan)
 
+# Include Routers
+app.include_router(auth.router)
+app.include_router(chat.router)
+
 
 @app.get("/")
-def read_root() -> dict[str, Any]:
+def read_root() -> dict[str, list[str] | str]:
     """Root endpoint showing loaded agents and skills."""
     return {
-        "status": "Phylactery is breathing. 💀",
+        "status": "Phylactery, Alive again!. 💀",
         "loaded_agents": list(brain.agents.keys()),
         "loaded_skills": list(brain.skills.keys()),
     }
-
-
-class ChatRequest(BaseModel):
-    """Chat request model."""
-
-    message: str
-
-
-@app.post("/chat/{agent_name}")
-async def chat_with_agent(agent_name: str, request: ChatRequest) -> dict[str, Any]:
-    """Chat with a specific agent."""
-    # 1. Load Agent Definition
-    agent_def = brain.get_agent(agent_name)
-    if not agent_def:
-        return {"error": "Agent not found"}
-
-    # 2. Spin up Engine (In production, cache this!)
-    try:
-        engine = AgentEngine(agent_def)
-        response = await engine.ainvoke(request.message)
-        return {"agent": agent_name, "response": response}
-    except Exception as e:  # noqa: BLE001
-        return {"error": str(e)}

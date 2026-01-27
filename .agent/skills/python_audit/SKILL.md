@@ -1,68 +1,67 @@
 ---
-name: python_audit
-description: Auditoría de calidad, arquitectura y performance para proyectos Python (Based on FastAPI).
+name: python-audit
+description: >
+  Auditoría de calidad, arquitectura y performance para proyectos Python.
+  Trigger: Cuando se audita un repositorio Python, se inicia un refactor o se configura CI/CD.
 metadata:
-  version: 1.0.0
-  author: SkullRender AI
-  tags: [python, fastapi, quality, security]
+  version: 1.1.0
+  author: SkullRender (Antigravity)
 ---
 
-# SKILL: Python Project Audit (SkullRender Standard)
-
-> [!IMPORTANT]
-> **Filosofía**: "Bones + Brain". Estructura sólida, tipado estricto y cero deuda técnica.
-> Inspirado en la arquitectura de **FastAPI**, este skill define las reglas innegociables para proyectos Python en SkullRender.
-
 ## When to Use
-*   Cuando se audita un nuevo repositorio Python.
-*   En el pipeline de CI/CD (Pre-commit).
-*   Al iniciar un refactor de un servicio legacy.
+Load this skill when:
+- Auditing a new Python repository (FastAPI/General).
+- Configuring CI/CD pipelines or pre-commit hooks.
+- Starting a refactor of legacy services.
 
-## Critical Patterns (The "Must Haves")
+## Critical Patterns
 
-### 1. Los Huesos (Infraestructura)
-*   **Package Management**: Uso obligatorio de **`uv`** (o `pdm` como fallback). `pip` directo está prohibido.
-*   **Configuración Única**: Todo en `pyproject.toml`.
-*   **Hooks**: `.pre-commit-config.yaml` presente y activo.
+### 1. The Bones (Infraestructura)
+"Bones + Brain" - A solid structure is non-negotiable.
 
-### 2. El Cerebro (Tipado)
-*   **Strict Mode**: `mypy --strict` configurado en CI.
-*   **No Any**: El uso de `Any` debe ser explícitamente ignorado con `# type: ignore[misc]` y justificado.
+| Component | Standard | Why |
+|-----------|----------|-----|
+| Package Manager | `uv` | Modern, fast, and reliable lockfiles. |
+| Configuration | `pyproject.toml` | Single source of truth for tools. |
+| MCP Servers | No `print()` | Avoid breaking the protocol; use logging. |
 
-### 3. Músculos (Testing)
-*   **Coverage**: >95% en lógica de negocio.
-*   **Pytest**: Único runner permitido.
-*   **Modern Assertions**: Preferir `dirty-equals` sobre validaciones manuales de diccionarios.
+### 2. The Brain (Type Safety)
+Strict typing ensures long-term maintainability.
 
-## Anti-Patterns (The "Never Do's")
-
-*   ❌ Usar `requirements.txt` sin lockfile (usar `uv.lock`).
-*   ❌ Mezclar lógica de negocio en controladores (`routers`).
-*   ❌ "Pokemon Exception Handling" (`except Exception: pass`).
-*   ❌ Configuración dispersa (`setup.cfg`, `.flake8` separados).
+| Pattern | Rule |
+|---------|------|
+| Typing | `mypy --strict` mandatory. |
+| `Any` | Prohibited unless justified with `# type: ignore`. |
+| Coverage | >95% in business logic. |
 
 ## Code Examples
 
-### Good: Estructura Modular
-```text
-project_root/
-├── pyproject.toml
-├── uv.lock
-├── src/
-│   └── my_app/
-│       ├── __init__.py
-│       ├── main.py
-│       └── routers/
-└── tests/
-```
-
-### Good: Pyproject.toml Configuration
+### Example: Standard pyproject.toml
 ```toml
-[tool.ruff]
-line-length = 88
-target-version = "py311"
-
 [tool.mypy]
 strict = true
 ignore_missing_imports = true
+
+[tool.ruff]
+line-length = 88
+target-version = "py311"
 ```
+
+## Anti-Patterns
+
+### Don't: Manual Dependencies
+Why: Manual `requirements.txt` are brittle. Use `uv.lock`.
+```text
+# ❌ Using requirements.txt without a lockfile
+```
+
+### Don't: Pokemon Exception Handling
+Why: Masking errors makes debugging impossible.
+```python
+# ❌ except Exception: pass
+```
+
+## Quick Reference
+- **Runner**: `pytest` only.
+- **MCP Logging**: Log to `stderr`.
+- **Formatting**: `ruff` is the standard.

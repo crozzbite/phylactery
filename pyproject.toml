@@ -17,6 +17,11 @@ dependencies = [
     "rich>=14.3.1",
     "typer>=0.21.1",
     "uvicorn>=0.40.0",
+    "mcp>=1.0.0",
+    "pinecone-client>=3.1.0",
+    "langchain-pinecone>=0.0.3",
+    "langchain-community>=0.0.19",
+    "detect-secrets>=1.5.0",
 ]
 
 [dependency-groups]
@@ -24,6 +29,7 @@ dev = [
     "hatchling>=1.28.0",
     "mypy>=1.19.1",
     "pytest>=9.0.2",
+    "pytest-asyncio>=0.23.0",
     "ruff>=0.14.14",
 ]
 

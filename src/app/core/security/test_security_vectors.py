@@ -2,7 +2,7 @@ import unittest
 import os
 import json
 from src.app.core.security.dlp import DLPProcessor
-from src.app.core.security.risk_policy import RiskEngine
+from src.app.core.security.engine import RiskEngine
 
 class TestSecurityVectors(unittest.TestCase):
     

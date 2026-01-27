@@ -1,36 +1,66 @@
 ---
 name: typescript
-description: Strict TypeScript rules for SkullRender.
+description: >
+  Strict TypeScript rules for SkullRender.
+  Trigger: When writing TypeScript code, defining interfaces, or managing types.
 metadata:
-  version: 1.0.0
-  author: SkullRender AI
-  tags: [typescript, quality, strict]
+  version: 1.1.0
+  author: SkullRender (Antigravity)
 ---
 
-# SKILL: TypeScript Strict
-
-> [!IMPORTANT]
-> **Regla de Oro**: Si compila, debe ser correcto. Confía en el sistema de tipos.
+## When to Use
+Load this skill when:
+- Writing new TypeScript code.
+- Defining models, interfaces, or types.
+- Cleaning up untyped or loosely typed code.
 
 ## Critical Patterns
 
-### 1. Tipado Estricto
-*   **No Any**: `any` está prohibido. Usar `unknown` si el tipo es desconocido al principio.
-*   **Return Types**: Todas las funciones deben declarar explícitamente qué retornan.
-*   **Strict Null Checks**: Asumir que los valores pueden ser `null` o `undefined` y manejarlos.
+### 1. Strict Typing
+"If it compiles, it must be correct".
 
-### 2. Estructuras de Datos
-*   **No Enums**: Preferir `const` assertions o Union Types.
-    *   *Bad*: `enum Role { Admin, User }`
-    *   *Good*: `type Role = 'Admin' | 'User';` o `const Roles = { Admin: 'Admin' } as const;`
-*   **Immutability**: Usar `readonly` en arrays y propiedades siempre que sea posible.
+| Pattern | Rule | Why |
+|---------|------|-----|
+| `any` | FORBIDDEN | Use `unknown` and type guards instead. |
+| Returns | Explicitly declare | Improves readability and prevents logic errors. |
+| Null Checks | Strict | Force the handling of `null/undefined`. |
 
-### 3. Utility Types
-*   Usar `Pick`, `Omit`, `Partial` para derivar tipos en lugar de duplicar interfaces.
-*   Usar Zod para validar datos en tiempo de ejecución (que coincidan con los tipos estáticos).
+### 2. Data Structures
+Prefer modern, lean type definitions.
+
+| Use Case | Pattern |
+|----------|---------|
+| Enums | ❌ Prohibited. Use `const assertions` or `Union Types`. |
+| Immutability| Use `readonly` for arrays and object properties. |
+| Validation | Use `Zod` for runtime validation. |
+
+## Code Examples
+
+### Example: Proper Union Types
+```typescript
+type Role = 'Admin' | 'User';
+
+const ROLES = {
+  ADMIN: 'Admin',
+  USER: 'User'
+} as const;
+```
 
 ## Anti-Patterns
 
-*   ❌ Usar `!` (Non-null assertion) a menos que sea 100% seguro (ej: tests).
-*   ❌ Interfaces con prefijo `I` (`IUser`).
-*   ❌ Tipos "Spaghetti" anidados inline (extraer a `types.ts`).
+### Don't: Non-Null Assertions (`!`)
+Why: It lies to the compiler and causes runtime crashes.
+```typescript
+// ❌ const user = users.find(u => u.id === id)!;
+```
+
+### Don't: Interface Prefixes
+Why: Redundant and outdated.
+```typescript
+// ❌ interface IUser { ... }
+```
+
+## Quick Reference
+- **No Enums**: Only Union Types or Const Assertions.
+- **Strict**: `strict: true` in `tsconfig.json`.
+- **Naming**: Use PascalCase for types/interfaces.
