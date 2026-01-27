@@ -12,6 +12,12 @@ metadata:
 > [!IMPORTANT]
 > **Filosofía**: Componentes Standalone, Signals para estado y Rendimiento.
 > Basado en la documentación oficial de Angular y el estándar Gentleman.
+>
+> **Documentation**: [angular.dev](https://angular.dev/)
+
+## Related Workflows
+
+- [`/create-angular19-app-global`](../../../.agent/workflows/create-angular19-app-global.md) — Create new Angular 19 app with SSR and GitHub integration
 
 ## When to Use
 *   Siempre que se escriba código Angular (Componentes, Servicios, Pipes).
