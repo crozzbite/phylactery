@@ -16,7 +16,7 @@ import os
 import json
 import hashlib
 import re
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict
 
 def get_llm():
     """
@@ -55,7 +55,7 @@ def get_llm():
     )
 
 
-def canonicalize(args: Dict[str, Any]) -> str:
+def canonicalize(args: Dict[str, object]) -> str:
     """
     Canonicalize tool arguments for hash calculation.
     
@@ -96,7 +96,7 @@ def calculate_hash(canonical: str) -> str:
     return hashlib.sha256(canonical.encode('utf-8')).hexdigest()
 
 
-def validate_tool_args(name: str, args: Dict[str, Any]) -> Tuple[bool, str]:
+def validate_tool_args(name: str, args: Dict[str, object]) -> Tuple[bool, str]:
     """
     Server-side validation for tool arguments.
     
@@ -177,10 +177,42 @@ def validate_tool_args(name: str, args: Dict[str, Any]) -> Tuple[bool, str]:
     return True, ""
 
 
+def get_pinecone_client():
+    """
+    Factory function to create Pinecone client instance.
+    Using GRPC client for better performance in batch operations.
+    
+    Environment Variables:
+    - PINECONE_API_KEY: Required
+    
+    Returns:
+    - PineconeGRPC: Configured client
+    """
+    from pinecone.grpc import PineconeGRPC
+    api_key = os.getenv("PINECONE_API_KEY")
+    if not api_key:
+        raise ValueError("PINECONE_API_KEY environment variable required.")
+    return PineconeGRPC(api_key=api_key)
+
+
+def get_pinecone_index_name():
+    """Returns the configured Pinecone index name."""
+    return os.getenv("PINECONE_INDEX_NAME") or os.getenv("PINECONE_INDEX") or "phylactery-memory"
+
+
+def get_pinecone_index_host():
+    """
+    Returns the Pinecone index host if configured.
+    Targeting by host directly avoids an extra 'describe_index' call.
+    """
+    return os.getenv("PINECONE_INDEX_HOST")
+
+
 # Export all for easy imports
 __all__ = [
     "get_llm",
     "canonicalize",
     "calculate_hash",
-    "validate_tool_args"
+    "validate_tool_args",
+    "get_pinecone_client"
 ]

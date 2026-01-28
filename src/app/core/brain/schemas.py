@@ -1,5 +1,4 @@
-from typing import TypedDict, Annotated, List, Dict, Optional, Any, Union
-import operator
+from typing import TypedDict, Annotated, List, Dict, Optional, Union
 from langchain_core.messages import BaseMessage
 from langgraph.graph.message import add_messages
 
@@ -11,7 +10,7 @@ class ProposedTool(TypedDict):
     Must NOT be executed directly without RiskGate validation.
     """
     name: str
-    args: Dict[str, Any]
+    args: Dict[str, object]
     canonical_args: str  # For HMAC binding (normalized JSON string)
     args_hash: str       # SHA256(canonical_args)
     tool_call_id: str    # LangChain compatibility
@@ -24,7 +23,7 @@ class ToolResult(TypedDict):
     Handles Eviction and Rehydration policy.
     """
     status: str          # "success" | "failed"
-    output: Union[str, Dict[str, Any]]
+    output: Union[str, Dict[str, object]]
     
     # Eviction Fields
     evicted: bool
@@ -34,6 +33,21 @@ class ToolResult(TypedDict):
     
     summary: Optional[str]    # Head of content
     source_path: Optional[str]
+
+class SecurityFinding(TypedDict):
+    """Contract for DLP and Security Audit flags."""
+    rule_id: str
+    severity: str        # "low" | "medium" | "high" | "critical"
+    message: str
+    file_path: Optional[str]
+    line: Optional[int]
+
+class AuditEntry(TypedDict):
+    """Immutable log replica entry."""
+    timestamp: float
+    action: str
+    actor: str
+    details: Dict[str, object]
 
 # --- AGENT STATE ---
 
@@ -72,5 +86,5 @@ class AgentState(TypedDict):
 
     # Safety & Audit
     do_not_store: bool
-    security_findings: List[Dict[str, Any]] # DLP flags
-    audit_trail: List[Dict[str, Any]]       # Immutable log replica
+    security_findings: List[SecurityFinding] # DLP flags
+    audit_trail: List[AuditEntry]            # Immutable log replica

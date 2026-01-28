@@ -16,7 +16,7 @@ Use Case:
 import time
 import asyncio
 import hashlib
-from typing import Dict, Any, Optional
+from typing import Dict, Optional
 from threading import Lock
 
 
@@ -63,7 +63,7 @@ class IdempotencyStore:
     
     def __init__(self):
         """Initialize empty store with background cleanup."""
-        self._store: Dict[str, Dict[str, Any]] = {}
+        self._store: Dict[str, Dict[str, object]] = {}
         self._lock = Lock()
         self._cleanup_task: Optional[asyncio.Task] = None
     
@@ -99,7 +99,7 @@ class IdempotencyStore:
             for key in expired_keys:
                 del self._store[key]
     
-    def get(self, key: str) -> Optional[Dict[str, Any]]:
+    def get(self, key: str) -> Optional[Dict[str, object]]:
         """
         Retrieve cached result.
         
@@ -121,7 +121,7 @@ class IdempotencyStore:
             
             return data["value"]
     
-    def set(self, key: str, value: Dict[str, Any], ttl: int = 600) -> None:
+    def set(self, key: str, value: Dict[str, object], ttl: int = 600) -> None:
         """
         Store result with TTL.
         

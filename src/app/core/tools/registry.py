@@ -12,7 +12,7 @@ Benefits:
 - Enables runtime extensibility
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Optional
 
 
 class ToolRegistry:
@@ -29,7 +29,7 @@ class ToolRegistry:
     
     def __init__(self):
         """Initialize empty registry."""
-        self.tools: Dict[str, Dict[str, Any]] = {}
+        self.tools: Dict[str, Dict[str, object]] = {}
     
     def register_from_mcp(self, mcp_runner) -> None:
         """
@@ -58,7 +58,7 @@ class ToolRegistry:
                 "source": "mcp"
             }
     
-    def register_custom(self, name: str, schema: Dict[str, Any]) -> None:
+    def register_custom(self, name: str, schema: Dict[str, object]) -> None:
         """
         Register a custom tool (non-MCP).
         
@@ -84,7 +84,7 @@ class ToolRegistry:
         """
         return name in self.tools
     
-    def get_schema(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_schema(self, name: str) -> Optional[Dict[str, object]]:
         """
         Get JSON schema for a tool.
         

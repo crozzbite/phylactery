@@ -2,7 +2,7 @@ import re
 import os
 import json
 import hashlib
-from typing import Literal, Dict, Any, cast
+from typing import Literal
 
 # LangGraph & Core
 from langgraph.types import Command
@@ -35,7 +35,7 @@ def make_tool_result_failed(msg: str) -> ToolResult:
         "source_path": None
     }
 
-def canonicalize(args: Dict[str, Any]) -> str:
+def canonicalize(args: Dict[str, object]) -> str:
     """Produces the canonical JSON string for HMAC signing."""
     return json.dumps(args, sort_keys=True, separators=(',', ':'))
 

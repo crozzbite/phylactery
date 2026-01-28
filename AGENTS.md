@@ -1,38 +1,30 @@
-<!--
-╭──────────────────────────────────────────────────────────────────────────────╮
-│                                                                              │
-│   GENTLEMAN GUARDIAN ANGEL :: AGENTS.md                                      │
-│                                                                              │
-│   This file aggregates the active rules and agents for the project.          │
-│   It is used by the pre-commit hook to audit changes.                        │
-│                                                                              │
-╰──────────────────────────────────────────────────────────────────────────────╯
--->
+# 💀 Spirits of the Phylactery
 
-# Active Agents
+Este es el catálogo de almas (agentes) y habilidades (skills) que residen actualmente en tu Phylactery. Inspirado en el conocimiento original de **Gentleman-Programming**.
 
-- [Python Architect](.agent/agents/python_architect.md)
-  - **Scope**: `**/*.py`, `pyproject.toml`
-  - **Skills**:
-    - [Python Audit](.agent/skills/python_audit/SKILL.md)
-    - [Git Standards](.agent/skills/github-pr/SKILL.md)
+## 🧠 Agentes (Mentes)
+Ubicados en `.agent/agents/`
 
-# Installed Skills Reference
-*   [Angular Moderno](.agent/skills/angular/SKILL.md)
-*   [TypeScript Strict](.agent/skills/typescript/SKILL.md)
-*   [Git & PRs](.agent/skills/github-pr/SKILL.md)
+| Agente | Rol | Propósito |
+| :--- | :--- | :--- |
+| **Phylactery** | Lich Orchestrator | Presentador y guía central del sistema. |
+| **Python Architect** | Architect | Experto en Python, FastAPI y Clean Architecture. |
+| **MCP Admin** | SysAdmin | Administrador de sistemas con acceso a herramientas MCP. |
+| **MCP Server Creator** | Architect | Experto en crear servidores MCP (Python) seguros. |
 
-# Global Rules
+## ⚔️ Skills (Habilidades)
+Ubicadas en `.agent/skills/` y referenciando estándares globales.
 
-1.  **Bones + Brain**: Structure first, logic second.
-2.  **No Broken Windows**: Zero linting errors allowed.
-3.  **Documentation**: All public APIs must be documented.
+| Habilidad | Dominio | Descripción | Referencia Global |
+| :--- | :--- | :--- | :--- |
+| **Angular** | Frontend | Estándares SkullRender v19+ | [architecture](file:///c:/Users/HP/Desktop/IA-proyects/.agentes/Gentleman-Skills/curated/angular/architecture/SKILL.md) |
+| **GitHub PR** | Workflow | Conventional Commits | `.agent/skills/github-pr.md` |
+| **Python Audit** | Quality | FastAPI Performance | `.agent/skills/python-audit.md` |
+| **Guardian Angel**| Rules | **Reglas Críticas GGA** | [AGENTS.md](file:///c:/Users/HP/Desktop/IA-proyects/AGENTS.md) |
 
-# Protocol for New Tools
+---
 
-> [!TIP]
-> **"Don't Reinvent the Wheel"**
-> When a new tool is introduced to the project:
-> 1.  **Check Repository**: Look into [`Gentleman-Skills/curated`](https://github.com/Gentleman-Programming/Gentleman-Skills/tree/main/curated) first.
-> 2.  **Import**: If it exists, copy the `SKILL.md` to `.agent/skills/<tool>/`.
-> 3.  **Create**: Only creation from scratch if it's not in the official repo.
+### 🛡️ Guía del Lich
+1. **Carga**: Pon archivos `.md` en `.agent/agents/` para despertar nuevas almas.
+2. **Invocación**: Usa `{@nombre_agente}` para llamar a su poder.
+3. **Equilibrio**: No despiertes a más de 5 agentes a la vez para evitar el drenaje de rendimiento.

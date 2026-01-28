@@ -111,7 +111,17 @@ uv run uvicorn src.app.main:app --reload
 
 ---
 
-**SkullRender Labs** - *Bones are solid. Brain is sharp.* 💀
+## 📜 Orígenes y Conocimiento
+Phylactery es un proyecto de **SkullRender**, inspirado en la filosofía de **Gentleman-Programming**. Originalmente concebido para potenciar AI Agents con habilidades específicas y patrones de arquitectura limpia.
+
+### 🛡️ Guía Rápida del Lich
+*   **Añadir Espíritus**: Coloca archivos `.md` en `.agent/agents/`.
+*   **Invocación**: Usa `{@nombre_agente}` para llamar a un agente.
+*   **Límite de Almas**: Se recomienda mantener entre 3 y 5 agentes activos simultáneamente para un rendimiento óptimo.
+
+Para un catálogo detallado de agentes y habilidades, consulta: [AGENTS.md](file:///c:/Users/HP/.gemini/antigravity/playground/phylactery/AGENTS.md)
+
+---
 
 ---
 
@@ -130,7 +140,13 @@ uv run phylactery --help
     ```bash
     uv run phylactery list
     ```
-2.  **Chatear con un Agente**:
+2.  **Chatear (Default: Presentador)**:
+    ```bash
+    uv run phylactery chat
+    ```
+    *(Inicia una sesión con el agente orquestador `phylactery`)*
+
+3.  **Chatear con un Agente específico**:
     ```bash
     uv run phylactery chat python_architect
     ```

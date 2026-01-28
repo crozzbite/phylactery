@@ -9,8 +9,8 @@ When a tool output exceeds `max_tokens`, it is replaced with a reference:
 """
 
 import uuid
-from typing import Any, Optional, Callable
-from langchain_core.messages import ToolMessage
+from typing import Optional, Callable
+from langchain_core.messages import ToolMessage, BaseMessage
 
 from ..backends.protocol import BackendProtocol
 from ..backends.state import StateBackend
@@ -36,7 +36,7 @@ class EvictionMiddleware:
             return self.backend_factory(runtime)
         return StateBackend(runtime)
     
-    def process_messages(self, messages: list[Any], runtime: Any) -> list[Any]:
+    def process_messages(self, messages: list[BaseMessage], runtime: object) -> list[BaseMessage]:
         """
         Scan messages and evict large tool outputs.
         Should be called before sending messages to the LLM.

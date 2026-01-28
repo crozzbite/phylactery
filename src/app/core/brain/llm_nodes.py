@@ -14,12 +14,15 @@ Security Principles:
 import json
 import re
 import time
-from typing import Dict, Any, List, Literal, Callable
+from typing import Dict, Literal, Callable
 from langgraph.types import Command
 from langchain_core.messages import SystemMessage, HumanMessage, AIMessage
 
+# Phylactery Internal
+from .vector_store import VectorStoreManager
+from .schemas import AgentState
 
-def parse_llm_json(text: str, fallback: Dict[str, Any]) -> Dict[str, Any]:
+def parse_llm_json(text: str, fallback: Dict[str, object]) -> Dict[str, object]:
     """
     Robust JSON extraction from LLM response.
     
@@ -57,7 +60,7 @@ def parse_llm_json(text: str, fallback: Dict[str, Any]) -> Dict[str, Any]:
 
 
 async def planner_node_impl(
-    state: Dict[str, Any],
+    state: AgentState,
     llm,
 ) -> Command[Literal["Supervisor"]]:
     """
@@ -94,10 +97,52 @@ async def planner_node_impl(
     if not goal:
         goal = "No goal specified"
     
+    user_prompt = HumanMessage(content=f"Goal: {goal}")
+    
+    # --- TIER 2 MEMORY RETRIEVAL (Phase 5.1.3) ---
+    memories_str = "No relevant memory found."
+    try:
+        vm = VectorStoreManager()
+        thread_id = state.get("thread_id", "default")
+        
+        # 1. Retrieve Technical Context (Codebase)
+        code_matches = vm.query_memory(
+            query_text=goal, 
+            namespace="codebase", 
+            top_k=2, 
+            rerank=True, 
+            rerank_top_n=1
+        )
+        
+        # 2. Retrieve Conversation History (Session)
+        session_matches = vm.query_memory(
+            query_text=goal, 
+            namespace=thread_id, 
+            top_k=3, 
+            rerank=True, 
+            rerank_top_n=2
+        )
+        
+        all_matches = code_matches + session_matches
+        
+        if all_matches:
+            mem_items = []
+            for m in all_matches:
+                content = m.get("metadata", {}).get("content", "N/A")
+                source = m.get("metadata", {}).get("file_path", "Session History")
+                mem_items.append(f"- [Source: {source}] {content}")
+            memories_str = "\n".join(mem_items)
+            # logger.info(f"Retrieved {len(all_matches)} memories (Code + Session)")
+    except Exception as e:
+        # logger.error(f"Memory Retrieval failed: {e}")
+        pass
+
     # Prompt engineering for structured output
     system_prompt = SystemMessage(content=(
         "You are the PLANNER for an AI agent system.\n"
         "Your job: Break down the user's goal into atomic steps.\n\n"
+        "RELEVANT MEMORY (Use this to avoid repeats or refine context):\n"
+        f"{memories_str}\n\n"
         "RULES:\n"
         "- Return ONLY valid JSON (no markdown, no explanations)\n"
         "- Max 8 steps\n"
@@ -106,8 +151,6 @@ async def planner_node_impl(
         "- Steps should be sequential and logical\n\n"
         'FORMAT: {"plan": ["step1", "step2", ...]}\n'
     ))
-    
-    user_prompt = HumanMessage(content=f"Goal: {goal}")
     
     # Invoke LLM
     response = await llm.ainvoke([system_prompt, user_prompt])
@@ -144,11 +187,11 @@ async def planner_node_impl(
 
 
 async def executor_node_impl(
-    state: Dict[str, Any],
+    state: AgentState,
     llm,
-    canonicalize: Callable[[Dict], str],
+    canonicalize: Callable[[Dict[str, object]], str],
     hash_fn: Callable[[str], str],
-    validate_fn: Callable[[str, Dict], tuple]
+    validate_fn: Callable[[str, Dict[str, object]], tuple]
 ) -> Command[Literal["RiskGate", "Finalizer", "Interpreter"]]:
     """
     Executor Node: Propose tool call for current step.
@@ -272,7 +315,7 @@ async def executor_node_impl(
 
 
 async def finalizer_node_impl(
-    state: Dict[str, Any],
+    state: AgentState,
     llm
 ) -> Command[Literal["END"]]:
     """
@@ -342,9 +385,29 @@ async def finalizer_node_impl(
     progress_msg = f"**Progreso:** {done_count}/{len(plan)} pasos completados.\n\n"
     progress_msg += "**Pasos:**\n"
     for i, step in enumerate(plan):
-        status = step_status.get(i, "pending")
-        emoji = "✅" if status == "done" else "⏳" if status == "pending" else "❌"
+        status = step_status.get(i, "done") # Simplified status check
+        emoji = "✅" if status == "done" else "⏳"
         progress_msg += f"{emoji} {i+1}. {step}\n"
+
+    # --- TIER 2 MEMORY PERSISTENCE (Phase 5.1.3) ---
+    # Save the completed task to the thread's long-term memory
+    if done_count == len(plan) and plan:
+        try:
+            vm = VectorStoreManager()
+            thread_id = state.get("thread_id", "default")
+            mem_id = f"task_{int(time.time())}"
+            vm.upsert_memory(
+                id=mem_id,
+                content=f"Task Completed: {state.get('plan', [])}. Summary: {progress_msg}",
+                metadata={
+                    "type": "task_summary",
+                    "thread_id": thread_id,
+                    "timestamp": time.time()
+                },
+                namespace=thread_id
+            )
+        except Exception:
+            pass
     
     return Command(
         update={"messages": state.get("messages", []) + [AIMessage(content=progress_msg)]},

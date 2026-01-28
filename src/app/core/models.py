@@ -19,3 +19,4 @@ class Agent(BaseModel):
     instructions: str  # The system prompt body
     path: str
     ai_provider: str | None = None  # Optional: override global provider
+    mcp_servers: list[str] = []

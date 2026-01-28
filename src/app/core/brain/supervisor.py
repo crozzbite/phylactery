@@ -11,11 +11,12 @@ Flow:
     Supervisor → Executor → RiskGate → [Auth/Tools] → Interpreter → Supervisor (loop)
 """
 
-from typing import Dict, Any, Literal
+from typing import Literal
 from langgraph.types import Command
+from .schemas import AgentState
 
 
-def supervisor_node(state: Dict[str, Any]) -> Command[Literal["Executor", "Finalizer"]]:
+def supervisor_node(state: AgentState) -> Command[Literal["Executor", "Finalizer"]]:
     """
     Supervisor: Orchestrate task execution with retry logic.
     """

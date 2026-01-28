@@ -11,7 +11,7 @@ JSON-RPC is handled internally by the MCP SDK - we just call Python methods.
 """
 
 import asyncio
-from typing import Dict, Any, List, Optional
+from typing import Dict, List, Optional
 from pathlib import Path
 
 
@@ -92,9 +92,9 @@ class MCPToolRunner:
     async def call(
         self,
         name: str,
-        args: Dict[str, Any],
+        args: Dict[str, object],
         timeout: int = 30
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """
         Execute tool via MCP.
         
@@ -176,7 +176,7 @@ class MCPToolRunner:
         """
         return list(self.tools.keys())
     
-    def get_tool_schema(self, name: str) -> Optional[Dict[str, Any]]:
+    def get_tool_schema(self, name: str) -> Optional[Dict[str, object]]:
         """
         Get JSON schema for a specific tool.
         
@@ -213,9 +213,9 @@ class MockMCPToolRunner(MCPToolRunner):
     async def call(
         self,
         name: str,
-        args: Dict[str, Any],
+        args: Dict[str, object],
         timeout: int = 30
-    ) -> Dict[str, Any]:
+    ) -> Dict[str, object]:
         """Return mock data based on tool name."""
         if name == "read_file":
             path = args.get("path", "unknown")
