@@ -2,6 +2,7 @@ import json
 import time
 import os
 import hashlib
+from datetime import datetime
 from typing import Dict, Literal, TypedDict, Union, List, Optional
 
 # Recursive JSON Type definition for better safety than Any
@@ -18,10 +19,13 @@ class AuditRecord(TypedDict):
     prev_hash: str
     integrity_hash: str
 
+from ..db import async_session_maker, SecurityLogDB
+
+
 class AuditLogger:
     """
-    Logs security events to an immutable append-only JSONL file.
-    Implements a simplified blockchain-like hash chain for integrity.
+    Logs security events to an immutable append-only JSONL file AND a SQL Database.
+    Implements a simplified blockchain-like hash chain for integrity in the JSONL file.
     """
     
     def __init__(self, log_path: str = AUDIT_FILE):
@@ -36,8 +40,6 @@ class AuditLogger:
         try:
             with open(self.log_path, 'rb') as f:
                 try:
-                    # Seek to end and read backwards to find newline (simplified for MVP)
-                    # For MVP functionality, just reading lines is fine unless file is huge.
                     lines = f.readlines()
                     if not lines:
                         return "0" * 64
@@ -48,15 +50,41 @@ class AuditLogger:
         except FileNotFoundError:
             return "0" * 64
 
-    def log_event(self, event_type: str, details: Dict[str, JSONValue], decision: str, risk_level: str):
+    async def log_event(
+        self, 
+        event_type: str, 
+        details: Dict[str, JSONValue], 
+        decision: str, 
+        risk_level: str,
+        user_id: Optional[str] = None
+    ):
         """
-        Appends a signed event to the log.
+        Appends a signed event to the log and the database.
         """
-        timestamp = time.time()
+        timestamp_float = time.time()
+        now = datetime.fromtimestamp(timestamp_float)
         
+        # 1. SQL Persistence (Primary)
+        if user_id:
+            try:
+                async with async_session_maker() as session:
+                    log_db = SecurityLogDB(
+                        user_id=user_id,
+                        category=event_type,
+                        severity=risk_level,
+                        details={**details, "decision": decision},
+                        timestamp=now
+                    )
+                    session.add(log_db)
+                    await session.commit()
+            except Exception as e:
+                # Fallback: Just log it to JSONL if DB fails
+                print(f"Error logging to SQL: {e}")
+
+        # 2. JSONL Persistence (Redundant / Hardened)
         # Construct record without hash first
-        record: AuditRecord = { # type: ignore (Pending: integrity_hash assignment order)
-            "ts": timestamp,
+        record: AuditRecord = { # type: ignore
+            "ts": timestamp_float,
             "event": event_type,
             "details": details, 
             "decision": decision, 
@@ -72,8 +100,10 @@ class AuditLogger:
         record["integrity_hash"] = new_hash
         
         # Write to disk
-        with open(self.log_path, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(record) + "\n")
-            
-        # Update memory state
-        self._last_hash = new_hash
+        try:
+            with open(self.log_path, 'a', encoding='utf-8') as f:
+                f.write(json.dumps(record) + "\n")
+            # Update memory state
+            self._last_hash = new_hash
+        except Exception as e:
+            print(f"Error logging to JSONL: {e}")
