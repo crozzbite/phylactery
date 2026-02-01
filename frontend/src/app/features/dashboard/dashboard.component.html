@@ -1,0 +1,102 @@
+<div class="full-screen bg-sr-pattern flex flex-col p-8 gap-8 overflow-hidden min-h-screen">
+  <header class="flex justify-between items-center border-b border-white/5 pb-6 h-24 shrink-0">
+    <div>
+       <h1 class="text-2xl font-tech font-bold text-white tracking-widest leading-none">NEURAL SPINE <span class="text-phy-ether">DASHBOARD</span></h1>
+       <div class="flex items-center gap-4 mt-2 h-8">
+         <p class="text-[10px] text-gray-500 font-tech">NODE_ID: {{ authService.user()?.username | uppercase }}</p>
+         <app-status-badge label="ETHERIC_STABLE" type="etheric" />
+       </div>
+    </div>
+    <div class="flex gap-4">
+        <!-- Right Sidebar Toggle -->
+        <button (click)="toggleRightSidebar()" 
+                class="px-3 py-2 border border-white/10 text-white/60 hover:text-white hover:bg-white/5 transition-colors rounded text-[10px]">
+           <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 transition-transform" [class.rotate-180]="!isRightSidebarOpen()" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5l7 7-7 7" />
+           </svg>
+        </button>
+
+        <button (click)="logout()" class="px-5 py-2 border border-phy-ether/30 text-white text-[10px] font-tech tracking-widest hover:bg-phy-ether/10 transition-colors">
+        TERMINATE_SESSION
+        </button>
+    </div>
+  </header>
+  
+  <main class="flex-1 flex gap-6 overflow-hidden">
+    <!-- Tactical Explorer Sidebar -->
+    <app-sidebar class="h-full"></app-sidebar>
+
+    <!-- Content Area (Chat) -->
+    <section class="flex-1 flex flex-col min-h-0 relative">
+      <app-neural-spine class="flex-1 h-full"></app-neural-spine>
+    </section>
+
+    <!-- Side Stats OR Artifact Editor (Dynamic Right Panel) -->
+    <aside class="w-96 flex flex-col gap-6 overflow-hidden h-full flex-shrink-0 border-l border-white/5 bg-black/20" [class.hidden]="!isRightSidebarOpen()">
+      @if (artifactService.selectedArtifact(); as artifact) {
+        <!-- ARTIFACT VIEWER MODE -->
+        <app-glass-card class="h-full flex flex-col p-4 border-phy-active/30">
+          <div class="flex justify-between items-center mb-4 border-b border-white/10 pb-2">
+            <h3 class="text-phy-active font-tech text-xs tracking-widest uppercase truncate max-w-[200px]">{{ artifact.title }}</h3>
+            <div class="flex gap-2">
+               <span class="px-2 py-0.5 rounded text-[9px] bg-white/10 text-white/60 font-mono">{{ artifact.type | uppercase }}</span>
+               <button (click)="artifactService.select(null)" class="text-white/40 hover:text-white transition-colors">
+                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                   <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                 </svg>
+               </button>
+            </div>
+          </div>
+          
+          <div class="flex-1 overflow-auto custom-scrollbar -mr-2 pr-2">
+             <app-artifact-renderer [artifact]="artifact"></app-artifact-renderer>
+          </div>
+          
+          <div class="mt-4 pt-4 border-t border-white/5 flex justify-end gap-2">
+            <button class="px-3 py-1 bg-red-500/20 text-red-400 hover:bg-red-500 hover:text-white transition-colors text-[10px] font-tech rounded border border-red-500/50 uppercase tracking-wider">
+               Delete
+            </button>
+             <button class="px-3 py-1 bg-phy-active/20 text-phy-active hover:bg-phy-active hover:text-black transition-colors text-[10px] font-tech rounded border border-phy-active/50 uppercase tracking-wider">
+               Edit_Mode
+            </button>
+          </div>
+        </app-glass-card>
+
+      } @else {
+        <!-- DEFAULT STATS MODE -->
+        @defer (on viewport; prefetch on idle) {
+          <app-glass-card>
+            <div class="flex justify-between items-start mb-4">
+              <h3 class="text-phy-ether font-tech text-xs tracking-widest">COGNITIVE ENGINE</h3>
+              <app-status-badge label="IDLE" type="void" />
+            </div>
+            <div class="mt-6 pt-6 border-t border-white/5">
+              <div class="flex justify-between text-[10px] font-tech text-gray-500">
+                <span>LATENCY</span>
+                <span class="text-phy-toxic">1.2ms</span>
+              </div>
+            </div>
+          </app-glass-card>
+        } @placeholder {
+          <div class="min-h-[171px] dark-glass animate-pulse rounded-xl border border-white/5"></div>
+        }
+    
+        @defer (on idle) {
+          <app-glass-card>
+            <div class="flex justify-between items-center mb-2">
+                <h3 class="text-phy-ether font-tech text-xs tracking-widest">VECTOR MEMORY</h3>
+                <div class="w-2 h-2 rounded-full bg-phy-ether animate-pulse"></div>
+            </div>
+            <p class="text-gray-400 text-sm italic font-ui mb-4">Initializing long-term synaptic storage...</p>
+            <div class="h-32 bg-black/40 rounded border border-white/5 relative overflow-hidden">
+                <!-- Mock Matrix Rain / Vector Vis -->
+                <div class="absolute inset-0 opacity-20 bg-[url('/assets/grid.svg')]"></div>
+            </div>
+          </app-glass-card>
+        } @placeholder {
+          <div class="min-h-[110px] dark-glass animate-pulse rounded-xl border border-white/5"></div>
+        }
+      }
+    </aside>
+  </main>
+</div>
