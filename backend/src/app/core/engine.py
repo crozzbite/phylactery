@@ -27,8 +27,10 @@ if TYPE_CHECKING:
 
 from .checkpointer import EncryptedSerializer
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from .tools.artifacts import create_artifact
 import asyncio
+import aiosqlite
 
 load_dotenv()
 
@@ -124,14 +126,13 @@ class AgentEngine:
         
         # Load Local Tools (Phase 4)
         local_tools = [create_artifact]
+        from langchain_core.utils.function_calling import convert_to_openai_function
+        
         for t in local_tools:
             self.local_tool_registry[t.name] = t
-            # Append metadata for Prompt Helper & Binding
-            self.tools.append({
-                "name": t.name,
-                "description": t.description,
-                "parameters": t.args # Schema
-            })
+            # Use LangChain's built-in converter to get a valid OpenAI function schema
+            func_def = convert_to_openai_function(t)
+            self.tools.append(func_def)
 
     async def initialize(self) -> None:
         """Async initialization of resources (DB, Graph, Tools). Idempotent."""
@@ -147,13 +148,26 @@ class AgentEngine:
             # Ensure data dir exists
             os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
             
-            # Initialize AsyncSqliteSaver
-            self._checkpointer_cm = AsyncSqliteSaver.from_conn_string(self.db_path)
-            self.checkpointer = await self._checkpointer_cm.__aenter__()
+            # Initialize AsyncSqliteSaver with Encryption (Manual Connection for Serde support)
+            from .checkpointer import EncryptedSerializer
+            
+            self._conn_cm = aiosqlite.connect(self.db_path)
+            self.conn = await self._conn_cm.__aenter__()
+            
+            # Enable WAL mode for concurrency
+            await self.conn.execute("PRAGMA journal_mode=WAL")
+            await self.conn.commit()
+            
+            # Using native AsyncSqliteSaver for stability (EncryptedSerializer caused crashes)
+            self.checkpointer = AsyncSqliteSaver(self.conn)
+            await self.checkpointer.setup()
             
             # Initialize MCP tools
             if self.agent.mcp_servers:
                 await self._init_mcp_tools(self.agent.mcp_servers)
+            
+            # Bind all tools (Local + MCP)
+            self._bind_tools_to_llm()
             
             # Build Graph (now that checkpointer is ready)
             self.graph = self._build_graph()
@@ -179,14 +193,15 @@ class AgentEngine:
                 except Exception as e:
                     logger.warning(f"Error closing MCP client {name}: {e}")
             
-            # Close Checkpointer
-            if self._checkpointer_cm:
+            # Close Checkpointer Connection
+            if hasattr(self, '_conn_cm') and self._conn_cm:
                 try:
-                    await self._checkpointer_cm.__aexit__(None, None, None)
+                    await self._conn_cm.__aexit__(None, None, None)
                 except Exception as e:
-                    logger.warning(f"Error closing checkpointer: {e}")
+                    logger.warning(f"Error closing DB connection: {e}")
                 finally:
-                    self._checkpointer_cm = None
+                    self._conn_cm = None
+                    self.conn = None
                     self.checkpointer = None
             
             self._initialized = False
@@ -242,9 +257,26 @@ class AgentEngine:
                     original_name = t['name']
                     tool_name = f"{server_name}_{original_name}"
                     
-                    tool_dict = cast(dict[str, object], t)
-                    tool_dict["name"] = tool_name
-                    self.tools.append(tool_dict)
+                    # Convert MCP Tool (JSON) to OpenAI Function Schema
+                    # MCP uses "inputSchema", OpenAI uses "parameters"
+                    input_schema = t.get("inputSchema", {})
+                    
+                    # Sanitize Schema: Recursively remove 'title' which breaks some LLMs
+                    def clean_schema(s):
+                        if isinstance(s, dict):
+                            return {k: clean_schema(v) for k, v in s.items() if k != "title"}
+                        elif isinstance(s, list):
+                            return [clean_schema(i) for i in s]
+                        return s
+                    
+                    parameters = clean_schema(input_schema)
+
+                    tool_def = {
+                        "name": tool_name,
+                        "description": t.get("description", ""),
+                        "parameters": parameters
+                    }
+                    self.tools.append(tool_def)
                     
                     self.tool_to_client[tool_name] = client
                     self.tool_name_map[tool_name] = original_name
@@ -253,6 +285,8 @@ class AgentEngine:
             except Exception as e:
                 logger.error(f"❌ Failed to initialize MCP Server {server_name}: {e}")
 
+    def _bind_tools_to_llm(self) -> None:
+        """Binds collected tools (Local + MCP) to the Executor LLM."""
         if self.tools and isinstance(self.llm_exec, BaseChatModel):
             logger.info(f"🛠️ Binding {len(self.tools)} tools to Executor LLM.")
             self.llm_exec = self.llm_exec.bind_tools(self.tools)
@@ -305,8 +339,25 @@ class AgentEngine:
             # Dynamic Context Injection (Phase 3A)
             user_identity = f"User: {user_context.get('name', 'Operator')} ({user_context.get('role', 'Unknown')})"
 
+            SYSTEM_PROMPT = """You are Phylactery, an advanced AI Orchestrator for the SkullRender ecosystem.
+    
+    CORE DIRECTIVES:
+    1. **Identity & Memory**:
+       - You possess PERSISTENT MEMORY. If the user asks what you know, CHECK YOUR HISTORY (chat history).
+       - Do NOT say "I don't have memory" or "I cannot remember". You CAN and MUST remember previous turns.
+       - **Identity Override**: The user's stated name or alias (e.g., "Crozz Bite") OVERRIDES any system-provided name (e.g., "SkullRender"). If the user corrects you, adopt the new name immediately and permanently for this session.
+
+    2. **Operational Mode**:
+       - Act as a High-Ranking Officer (The "Espada"). 
+       - Be direct, professional, and technically precise.
+       - Use angular analogies when explaining technical backend concepts (Service, Store, Signal).
+
+    3. **Tool Usage**:
+       - You have access to tools. USE THEM.
+       - If you need to create a file/code/diagram, use `create_artifact`.
+    """            
             router_prompt = (
-                f"You are Phylactery, a conversational AI assistant for SkullRender.\n"
+                f"{SYSTEM_PROMPT}\n"
                 f"Role: {self.agent.role}\n"
                 f"Instructions: {self.agent.instructions}\n"
                 f"Interact with: {user_identity}\n" 
@@ -511,9 +562,19 @@ class AgentEngine:
             last_message = state["messages"][-1]
             tool_messages: list[BaseMessage] = []
 
+            # INJECTION: Force correct user_id if tool expects it and we have context (Phase 7 Fix)
+            user_context = state.get("user_context", {})
+            real_user_id = user_context.get("user_id")
+
             if hasattr(last_message, "tool_calls") and last_message.tool_calls:
                 for tool_call in last_message.tool_calls:
                     tool_name = tool_call["name"]
+                    
+                    # Inject user_id if the tool argument "user_id" is present or expected by specific tools
+                    # We err on the side of security: if the tool takes user_id, we override it.
+                    if real_user_id and "user_id" in tool_call["args"]:
+                        logger.info(f"💉 Injecting verified user_id={real_user_id} into tool {tool_name}")
+                        tool_call["args"]["user_id"] = real_user_id
                     
                     # 1. Try MCP Clients
                     client = self.tool_to_client.get(tool_name)
@@ -540,6 +601,13 @@ class AgentEngine:
                         try:
                             # Invoke Local Tool
                             logger.info(f"🔧 [TOOLS] Executing Local Tool: {tool_name}")
+                            # Special case: create_artifact might have had user_id injected manually if it wasn't in args but was needed
+                            # But since we fixed the schema, LLM 'should' provide it.
+                            # We just strictly overwrite it above if present.
+                            # If not present in args but required, we add it.
+                            if real_user_id and "user_id" not in tool_call["args"] and tool_name == "create_artifact":
+                                tool_call["args"]["user_id"] = real_user_id
+
                             result = local_tool.invoke(tool_call["args"])
                             tool_messages.append(ToolMessage(content=str(result), tool_call_id=tool_call["id"]))
                         except Exception as e:
